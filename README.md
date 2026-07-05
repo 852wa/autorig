@@ -19,6 +19,8 @@
 
 ## 自動で行われること
 
+- [see-through](https://github.com/shitagaki-lab/see-through) の出力PSDをそのまま受け入れ（`mouth`→`mouth_open` 自動リネーム）
+- **閉じ目・閉じ口差分が無い場合、汎用差分を自動生成**（アンカーに合わせてスケール・配置し、まつ毛/口の色に自動調整。専用バーで位置・角度を微調整可能）
 - 低アルファノイズ除去（連結成分フィルタ）
 - 目・眉・まつ毛・閉じ目の**左右自動分離**（連結成分の重心で判定）
 - まぶた位置・虹彩中心・口・首ピボットなど**アンカーの自動検出**
@@ -67,6 +69,7 @@
 index.html      アプリ本体（UI + WebGLランタイム）
 lib/rigger.js   自動リグ生成（純TypedArray実装、Node でもテスト可能）
 lib/ag-psd.min.js  PSDパーサ（ag-psd, MIT）
+lib/genericparts.js  汎用閉じ目・閉じ口差分（自動生成用）
 sample.psd      サンプルモデル（各自で配置）
 ```
 
@@ -74,11 +77,13 @@ sample.psd      サンプルモデル（各自で配置）
 
 ## 既知の制限
 
-- 一枚絵（未パーツ分け）の自動分解は未対応（パーツ分けPSDが必要）
+- 一枚絵の分解はアプリ内では行いません。[see-through公式デモ（HuggingFace Space）](https://huggingface.co/spaces/24yearsold/see-through-demo)等で分割したPSDをドロップしてください（後処理は全自動）
 - 口の開きは差分切替+変形の簡易表現（中間差分が増えると滑らかになります）
 - 深度は名前ベースの固定テーブル（レイヤー順は PSD のまま尊重）
 
 ## License
 
 MIT（同梱の ag-psd も MIT、MediaPipe は Apache-2.0 を CDN 参照）。
+
+一枚絵のレイヤー分解には [shitagaki-lab/see-through](https://github.com/shitagaki-lab/see-through)（Apache-2.0, SIGGRAPH 2026）の利用を想定しています。本ツールは同プロジェクトの出力PSDの後処理・リギングを担う独立したサードパーティ製ツールであり、see-through のコード・モデルは同梱していません。
 **サンプルPSD の絵の権利は各作者に帰属します。** 自作モデルを配布する場合はご自身の権利物をお使いください。

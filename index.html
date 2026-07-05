@@ -82,6 +82,12 @@ header h1{letter-spacing:.05em}
 #readmeBody th,#readmeBody td{border:1px solid var(--line);padding:5px 9px}
 #readmeBody blockquote{border-left:3px solid var(--acc);padding:4px 12px;margin:8px 0;color:var(--sub);background:rgba(160,16,48,.06)}
 #readmeBody a{color:var(--acc2)}
+.sec>h2{cursor:pointer;user-select:none}
+.sec>h2::after{content:'▾';float:right;color:var(--sub);font-size:10px;transition:transform .15s}
+.sec.collapsed>h2::after{content:'▸'}
+.sec.collapsed>*:not(h2){display:none}
+#layers .ord{cursor:pointer;color:var(--sub);font-size:10px;padding:0 2px}
+#layers .ord:hover{color:var(--acc2)}
 </style>
 </head>
 <body>
@@ -96,6 +102,7 @@ header h1{letter-spacing:.05em}
       <p>レイヤー命名規約: face / eyewhite / irides / eyelash / eye_close / eyebrow /<br>
       mouth_open / mouth_close / nose / ears / neck / topwear / front hair / back hair など<br>
       髪を複数レイヤーに分ける場合は front hair_1, front hair_2 …（詳細はREADME）</p>
+      <p>一枚絵しか無い場合 → <a href="https://huggingface.co/spaces/24yearsold/see-through-demo" target="_blank" rel="noopener" style="color:var(--acc2)">see-through（HuggingFace Space・無料）</a>で自動分割したPSDをそのままドロップ。<br>口レイヤーのリネームと、足りない閉じ目・閉じ口差分の自動生成はこちらで行います。</p>
       <div class="btns" style="justify-content:center">
         <button class="btn primary" id="btnFile">PSDファイルを選ぶ</button>
         <button class="btn" id="btnSample">sample.psd を読み込む</button>
@@ -140,7 +147,13 @@ header h1{letter-spacing:.05em}
       <div class="row"><label>視線 X</label><input type="range" id="pEyeX" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>視線 Y</label><input type="range" id="pEyeY" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>瞳スケール</label><input type="range" id="pIrisScale" min="0.5" max="1.3" step="0.01" value="1"><span class="val"></span></div>
+      <div class="row"><label>左目スケール</label><input type="range" id="pEyeScaleL" min="0.5" max="1.5" step="0.01" value="1"><span class="val"></span></div>
+      <div class="row"><label>右目スケール</label><input type="range" id="pEyeScaleR" min="0.5" max="1.5" step="0.01" value="1"><span class="val"></span></div>
       <div class="row"><label>閉じやすさ</label><input type="range" id="pEyeEase" min="0" max="1" step="0.01" value="0.3"><span class="val"></span></div>
+      <div class="row"><label>差分 上下</label><input type="range" id="pEyeCY" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
+      <div class="row"><label>差分 角度</label><input type="range" id="pEyeCAng" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
+      </div>
+    <div class="sec"><h2>眉</h2>
       <div class="row"><label>眉（上下）</label><input type="range" id="pBrow" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>眉角度 対称</label><input type="range" id="pBrowAngSym" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>眉角度 左</label><input type="range" id="pBrowAngL" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
@@ -151,6 +164,8 @@ header h1{letter-spacing:.05em}
       <div class="row"><label>形（笑い）</label><input type="range" id="pMouthForm" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>閉じ口 上下</label><input type="range" id="pMouthCY" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
       <div class="row"><label>閉じやすさ</label><input type="range" id="pMouthEase" min="0" max="1" step="0.01" value="0.45"><span class="val"></span></div>
+      <div class="row"><label>閉じ口 角度</label><input type="range" id="pMouthCAng" min="-1" max="1" step="0.01" value="0"><span class="val"></span></div>
+      <div class="row"><label>口スケール</label><input type="range" id="pMouthScale" min="0.5" max="1.5" step="0.01" value="1"><span class="val"></span></div>
     </div>
     <div class="sec"><h2>前髪</h2>
       <div class="row"><label>揺れ</label><input type="range" id="pFhAmp" min="0" max="3" step="0.01" value="2"><span class="val"></span></div>
@@ -182,7 +197,7 @@ header h1{letter-spacing:.05em}
         <button class="btn" data-bg="dark">ダーク</button>
       </div>
     </div>
-    <div class="sec"><h2>自動リグ情報</h2><div id="layers"></div></div>
+    <div class="sec"><h2>レイヤー（上=奥 / ▲▼で描画順変更）</h2><div id="layers"></div></div>
   </div>
 </div>
 <div id="readmeOverlay"><div id="readmeWin">
@@ -191,6 +206,7 @@ header h1{letter-spacing:.05em}
 </div></div>
 <script src="lib/ag-psd.min.js"></script>
 <script src="lib/rigger.js"></script>
+<script src="lib/genericparts.js"></script>
 <script>
 (function(){
 "use strict";
@@ -285,11 +301,7 @@ function applyRig(rig){
     layers.push(L);
   }
   cv.width=CW; cv.height=CH; fit();
-  document.getElementById('layers').innerHTML = layers.map(L=>
-    '<div><b>'+L.name+'</b> d='+L.depth.toFixed(2)+
-    (L.strands?'<span class="tag">房×'+L.strands.length+'</span>':'')+
-    (L.side?'<span class="tag">'+L.side+'</span>':'')+
-    (L.fade?'<span class="tag">差分</span>':'')+'</div>').join('');
+  renderLayerList();
   const nStr=layers.reduce((s,L)=>s+(L.strands?L.strands.length:0),0);
   document.getElementById('rigInfo').innerHTML =
     layers.length+'パーツ / 髪'+nStr+'房を自動リグ'+
@@ -305,7 +317,7 @@ async function loadPsdBuffer(buf){
     const psd=window.agPsd.readPsd(new Uint8Array(buf),{useImageData:true,skipThumbnail:true});
     const pre=window.Rigger.cleanPsdLayers(psd);   // 下処理: 全レイヤーのノイズ除去+トリム
     lastPsd=psd; lastPre=pre;
-    const rig=window.Rigger.buildRig(psd);
+    const rig=window.Rigger.buildRig(psd, genericOpts());
     applyRig(rig);
     if(pre.noisy>0) document.getElementById('rigInfo').innerHTML +=
       '<br>下処理: 低アルファノイズを '+pre.noisy+'/'+pre.layers+' レイヤーから除去（「軽量PSDを保存」で書き出せます）';
@@ -315,7 +327,11 @@ async function loadPsdBuffer(buf){
     dropEl.classList.remove('hidden');
   }
 }
-window.__loadPsdData=function(psd){ lastPre=window.Rigger.cleanPsdLayers(psd); lastPsd=psd; applyRig(window.Rigger.buildRig(psd)); }; // test hook
+function genericOpts(){
+  const GP=window.GenericParts;
+  return GP?{generic:{eyeL:GP.get('eyeL'),eyeR:GP.get('eyeR'),mouth:GP.get('mouth')}}:{};
+}
+window.__loadPsdData=function(psd){ lastPre=window.Rigger.cleanPsdLayers(psd); lastPsd=psd; applyRig(window.Rigger.buildRig(psd, genericOpts())); }; // test hook
 document.getElementById('btnFile').addEventListener('click',()=>document.getElementById('fileInput').click());
 document.getElementById('fileInput').addEventListener('change',async ev=>{
   const f=ev.target.files[0]; if(f) loadPsdBuffer(await f.arrayBuffer());
@@ -340,7 +356,7 @@ const P = { angleX:0, angleY:0, angleZ:0, eyeOpenL:1, eyeOpenR:1, eyeX:0, eyeY:0
             mouthOpen:0, mouthForm:0, mouthCY:0, body:0, physAmp:2, soft:2,
             browAngL:0, browAngR:0, browAngSym:0, bangL:0, bangC:0, bangR:0,
             armY:0, armPos:0, bust:2.5, bustY:1, irisScale:1, mouthEase:0.45, eyeEase:0.3,
-            fhAmp:2, fhSoft:0.4 };
+            fhAmp:2, fhSoft:0.4, eyeCY:0, eyeCAng:0, mouthCAng:0, eyeScaleL:1, eyeScaleR:1, mouthScale:1 };
 const DEFAULTS = Object.assign({}, P);
 let lastPsd=null, lastPre=null;
 const T = Object.assign({}, P);
@@ -353,7 +369,8 @@ const sliders = { pAngleX:'angleX',pAngleY:'angleY',pAngleZ:'angleZ',pEyeL:'eyeO
   pBrowAngL:'browAngL',pBrowAngR:'browAngR',pBrowAngSym:'browAngSym',
   pBangL:'bangL',pBangC:'bangC',pBangR:'bangR',pArmY:'armY',pArmPos:'armPos',
   pBust:'bust',pBustY:'bustY',pIrisScale:'irisScale',pMouthEase:'mouthEase',pEyeEase:'eyeEase',
-  pFhAmp:'fhAmp',pFhSoft:'fhSoft' };
+  pFhAmp:'fhAmp',pFhSoft:'fhSoft',pEyeCY:'eyeCY',pEyeCAng:'eyeCAng',pMouthCAng:'mouthCAng',
+  pEyeScaleL:'eyeScaleL',pEyeScaleR:'eyeScaleR',pMouthScale:'mouthScale' };
 for(const id in sliders){
   const el=document.getElementById(id), key=sliders[id], v=el.parentNode.querySelector('.val');
   const upd=()=>{ T[key]=parseFloat(el.value); v.textContent=el.value; }; el.addEventListener('input',upd); upd();
@@ -464,6 +481,25 @@ document.getElementById('readmeClose').addEventListener('click',()=>document.get
 document.getElementById('readmeOverlay').addEventListener('click',e=>{ if(e.target.id==='readmeOverlay') e.target.classList.remove('show'); });
 
 // ---------- mouse ----------
+function renderLayerList(){
+  document.getElementById('layers').innerHTML = layers.map((L,i)=>
+    '<div style="display:flex;align-items:center;gap:3px">'+
+    '<span class="ord" data-i="'+i+'" data-d="-1">▲</span><span class="ord" data-i="'+i+'" data-d="1">▼</span>'+
+    '<b>'+L.name+'</b>'+
+    (L.synthetic?'<span class="tag">自動生成</span>':'')+
+    (L.strands?'<span class="tag">房×'+L.strands.length+'</span>':'')+
+    (L.side?'<span class="tag">'+L.side+'</span>':'')+
+    (L.fade?'<span class="tag">差分</span>':'')+'</div>').join('');
+}
+document.getElementById('layers').addEventListener('click',e=>{
+  const t=e.target; if(!t.classList||!t.classList.contains('ord'))return;
+  const i=+t.dataset.i, j=i+(+t.dataset.d);
+  if(j<0||j>=layers.length)return;
+  const tmp=layers[i]; layers[i]=layers[j]; layers[j]=tmp;
+  renderLayerList();
+});
+document.querySelectorAll('#panel .sec > h2').forEach(h=>h.addEventListener('click',()=>h.parentNode.classList.toggle('collapsed')));
+
 let mouse={x:0,y:0,in:false};
 cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect();
   mouse.x=(e.clientX-r.left)/r.width*2-1; mouse.y=(e.clientY-r.top)/r.height*2-1; mouse.in=true; });
@@ -594,6 +630,16 @@ function deform(L, e){
   for(let k=0;k<n;k+=2){
     let x=b[k], y=b[k+1];
     const vi=k>>1;
+    // --- per-eye / mouth scale ---
+    if(EA && (bn==='eyewhite'||bn==='irides'||bn==='eyelash'||bn==='eye_close')){
+      const sE=eyeSide==='L'?e.eyeScaleL:e.eyeScaleR;
+      if(sE!==1){ const cxE=(EA.x0+EA.x1)/2, cyE=(EA.y0+EA.y1)/2;
+        x=cxE+(x-cxE)*sE; y=cyE+(y-cyE)*sE; }
+    }
+    if(bn==='mouth_open'||bn==='mouth_close'){
+      const sM=e.mouthScale;
+      if(sM!==1){ x=A.mouth.cx+(x-A.mouth.cx)*sM; y=A.mouth.cy+(y-A.mouth.cy)*sM; }
+    }
     // --- local features ---
     if(L.fade==='eyeOpen'&&EA){
       if(bn==='irides'){
@@ -606,7 +652,13 @@ function deform(L, e){
         y = EA.closeY + (y-EA.closeY)*(1-0.85*(1-vOpen));   // lid compression
       }
     }
-    if(L.fade==='eyeClose'&&EA){ y -= vOpen*3; }
+    if(L.fade==='eyeClose'&&EA){
+      y -= vOpen*3;
+      y += e.eyeCY*14*FS;
+      const thE=e.eyeCAng*0.3*(eyeSide==='L'?1:-1);
+      if(thE){ const ct=Math.cos(thE), st=Math.sin(thE), rx=x-bcx, ry=y-bcy;
+        x=bcx+rx*ct-ry*st; y=bcy+rx*st+ry*ct; }
+    }
     if(bn==='eyebrow'){
       y += (-e.brow*9 + (1-vOpen)*3.5)*FS;
       const th=(eyeSide==='L'?(e.browAngL+e.browAngSym):(e.browAngR-e.browAngSym))*0.30;
@@ -620,6 +672,9 @@ function deform(L, e){
     }
     if(L.fade==='mouthClose'){
       y += e.mouthCY*14*FS;   // 形（笑い）は閉じ口には適用しない
+      const thM=e.mouthCAng*0.35;
+      if(thM){ const ct=Math.cos(thM), st=Math.sin(thM), rx=x-A.mouth.cx, ry=y-A.mouth.cy;
+        x=A.mouth.cx+rx*ct-ry*st; y=A.mouth.cy+rx*st+ry*ct; }
     }
     if(bn==='face' && y>A.mouth.cy){
       y += mo*6*FS*smooth((y-A.mouth.cy)/(A.face.y1-A.mouth.cy));
