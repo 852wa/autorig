@@ -21,6 +21,7 @@
 
 - [see-through](https://github.com/shitagaki-lab/see-through) の出力PSDをそのまま受け入れ（`mouth`→`mouth_open` 自動リネーム）
 - **閉じ目・閉じ口差分が無い場合、汎用差分を自動生成**（アンカーに合わせてスケール・配置し、まつ毛/口の色に自動調整。専用バーで位置・角度を微調整可能）
+  - 差分の元絵はリポジトリ直下の `eye_close.psd`（左右両目を1枚・間を空けて）/ `mouth_close.psd` を優先使用。無ければ内蔵データを使用
 - 低アルファノイズ除去（連結成分フィルタ）
 - 目・眉・まつ毛・閉じ目の**左右自動分離**（連結成分の重心で判定）
 - まぶた位置・虹彩中心・口・首ピボットなど**アンカーの自動検出**
@@ -69,7 +70,9 @@
 index.html      アプリ本体（UI + WebGLランタイム）
 lib/rigger.js   自動リグ生成（純TypedArray実装、Node でもテスト可能）
 lib/ag-psd.min.js  PSDパーサ（ag-psd, MIT）
-lib/genericparts.js  汎用閉じ目・閉じ口差分（自動生成用）
+lib/genericparts.js  汎用閉じ目・閉じ口差分（内蔵フォールバック）
+eye_close.psd    閉じ目差分の元絵（任意・差し替え可）
+mouth_close.psd  閉じ口差分の元絵（任意・差し替え可）
 sample.psd      サンプルモデル（各自で配置）
 ```
 

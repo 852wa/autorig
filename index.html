@@ -313,7 +313,10 @@ function applyRig(rig){
 const dropEl=document.getElementById('drop'), dropStatus=document.getElementById('dropStatus');
 async function loadPsdBuffer(buf){
   try{
+    if(!window.agPsd) throw new Error('lib/ag-psd.min.js が未読込です。ZIPを展開してから開く / lib フォルダを index.html と同じ階層に配置してください');
+    if(!window.Rigger) throw new Error('lib/rigger.js が未読込です。lib フォルダの配置を確認してください');
     dropStatus.textContent='解析中…';
+    try{ await customGenericReady; }catch(err){}
     const psd=window.agPsd.readPsd(new Uint8Array(buf),{useImageData:true,skipThumbnail:true});
     const pre=window.Rigger.cleanPsdLayers(psd);   // 下処理: 全レイヤーのノイズ除去+トリム
     lastPsd=psd; lastPre=pre;
@@ -321,15 +324,36 @@ async function loadPsdBuffer(buf){
     applyRig(rig);
     if(pre.noisy>0) document.getElementById('rigInfo').innerHTML +=
       '<br>下処理: 低アルファノイズを '+pre.noisy+'/'+pre.layers+' レイヤーから除去（「軽量PSDを保存」で書き出せます）';
+    if(rig.synth&&(rig.synth.eye||rig.synth.mouth)) document.getElementById('rigInfo').innerHTML +=
+      '<br>差分ソース: '+(customGeneric?'ルートの eye_close.psd / mouth_close.psd':'内蔵の汎用差分');
     dropStatus.textContent='';
   }catch(err){
     dropStatus.textContent='エラー: '+err.message;
     dropEl.classList.remove('hidden');
   }
 }
+let customGeneric=null;
+async function loadCustomGeneric(){
+  if(typeof fetch==='undefined'||!window.agPsd||!window.Rigger) return;
+  async function grab(url){
+    try{
+      const r=await fetch(url); if(!r.ok) return null;
+      const psd=window.agPsd.readPsd(new Uint8Array(await r.arrayBuffer()),{useImageData:true,skipThumbnail:true});
+      return window.Rigger.flattenPsdToImg(psd);
+    }catch(err){ return null; }
+  }
+  const [eye,mouth]=await Promise.all([grab('eye_close.psd'),grab('mouth_close.psd')]);
+  const g={};
+  if(eye){ const s=window.Rigger.splitImgLR(eye); if(s){ g.eyeL=s.l; g.eyeR=s.r; } }
+  if(mouth) g.mouth=mouth;
+  if(g.eyeL||g.mouth) customGeneric=g;
+}
+const customGenericReady=loadCustomGeneric();
 function genericOpts(){
   const GP=window.GenericParts;
-  return GP?{generic:{eyeL:GP.get('eyeL'),eyeR:GP.get('eyeR'),mouth:GP.get('mouth')}}:{};
+  const base=GP?{eyeL:GP.get('eyeL'),eyeR:GP.get('eyeR'),mouth:GP.get('mouth')}:{};
+  const g=Object.assign({},base,customGeneric||{});
+  return (g.eyeL||g.mouth)?{generic:g}:{};
 }
 window.__loadPsdData=function(psd){ lastPre=window.Rigger.cleanPsdLayers(psd); lastPsd=psd; applyRig(window.Rigger.buildRig(psd, genericOpts())); }; // test hook
 document.getElementById('btnFile').addEventListener('click',()=>document.getElementById('fileInput').click());
@@ -344,6 +368,10 @@ document.getElementById('btnSample').addEventListener('click',async ()=>{
     loadPsdBuffer(await r.arrayBuffer());
   }catch(err){ dropStatus.textContent='エラー: '+err.message; }
 });
+(function(){ const miss=[];
+  if(!window.agPsd)miss.push('ag-psd.min.js'); if(!window.Rigger)miss.push('rigger.js'); if(!window.GenericParts)miss.push('genericparts.js');
+  if(miss.length) dropStatus.textContent='⚠ lib/'+miss.join(', lib/')+' が読み込めていません（ZIP展開・libフォルダの配置を確認）';
+})();
 ['dragover','dragenter'].forEach(ev=>window.addEventListener(ev,e=>{ e.preventDefault(); dropEl.classList.add('dragover'); }));
 ['dragleave','drop'].forEach(ev=>window.addEventListener(ev,e=>{ e.preventDefault(); dropEl.classList.remove('dragover'); }));
 window.addEventListener('drop',async e=>{
